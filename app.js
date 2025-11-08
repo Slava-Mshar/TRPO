@@ -1,4 +1,3 @@
-
 let token = localStorage.getItem('token');     // Токен для запросов
 let role = localStorage.getItem('role');       // Роль: admin / teacher
 let userId = localStorage.getItem('userId');   // ID текущего пользователя
@@ -139,3 +138,66 @@ async function loadDisciplines() {
         </tr>`;
     });
 }
+// Загрузка назначений 
+async function loadAssignments() {
+    const res = await fetch('/api/assignments', { headers: { Authorization: `Bearer ${token}` } });
+    if (res.status === 401) return logout();
+    const assignments = await res.json();
+
+    const [teachersRes, groupsRes, disciplinesRes] = await Promise.all([
+        fetch('/api/teachers', { headers: { Authorization: `Bearer ${token}` } }),
+        fetch('/api/groups', { headers: { Authorization: `Bearer ${token}` } }),
+        fetch('/api/disciplines', { headers: { Authorization: `Bearer ${token}` } })
+    ]);
+
+    const teachers = await teachersRes.json();
+    const groups = await groupsRes.json();
+    const disciplines = await disciplinesRes.json();
+
+    const teacherMap = Object.fromEntries(teachers.map(t => [t.id, t.name]));
+    const groupMap = Object.fromEntries(groups.map(g => [g.id, g.name]));
+    const disciplineMap = Object.fromEntries(disciplines.map(d => [d.id, d.name]));
+
+    const tbody = document.querySelector('#assignmentsTable tbody');
+    tbody.innerHTML = '';
+    assignments.forEach(a => {
+        tbody.innerHTML += `<tr>
+            <td>${a.id}</td>
+            <td>${teacherMap[a.teacher_id] || '—'}</td>
+            <td>${groupMap[a.group_id] || '—'}</td>
+            <td>${disciplineMap[a.discipline_id] || '—'}</td>
+            <td>${a.hours}</td>
+            <td><button type="button" onclick="removeAssignment(${a.id})">Снять</button></td>
+        </tr>`;
+    });
+}
+
+async function loadReserves() {
+    const res = await fetch('/api/reserves', { headers: { Authorization: `Bearer ${token}` } });
+    if (res.status === 401) return logout();
+    const reserves = await res.json();
+
+    const [teachersRes, disciplinesRes] = await Promise.all([
+        fetch('/api/teachers', { headers: { Authorization: `Bearer ${token}` } }),
+        fetch('/api/disciplines', { headers: { Authorization: `Bearer ${token}` } })
+    ]);
+
+    const teachers = await teachersRes.json();
+    const disciplines = await disciplinesRes.json();
+
+    const teacherMap = Object.fromEntries(teachers.map(t => [t.id, t.name]));
+    const disciplineMap = Object.fromEntries(disciplines.map(d => [d.id, d.name]));
+
+    const tbody = document.querySelector('#reservesTable tbody');
+    tbody.innerHTML = '';
+    reserves.forEach(r => {
+        tbody.innerHTML += `<tr>
+            <td>${r.id}</td>
+            <td>${teacherMap[r.teacher_id] || '—'}</td>
+            <td>${disciplineMap[r.discipline_id] || '—'}</td>
+            <td>${r.hours}</td>
+            <td><button type="button" onclick="removeReserve(${r.id})">Удалить</button></td>
+        </tr>`;
+    });
+}
+
