@@ -200,4 +200,101 @@ async function loadReserves() {
         </tr>`;
     });
 }
+//Моя нагрузка (для преподавателя) 
+async function loadMyAssignments() {
+    const res = await fetch(`/api/my-assignments/${userId}`, { headers: { Authorization: `Bearer ${token}` } });
+    if (res.status === 401) return logout();
+    const data = await res.json();
+    const tbody = document.querySelector('#myAssignmentsTable tbody');
+    tbody.innerHTML = '';
+    data.forEach(a => {
+        tbody.innerHTML += `<tr>
+            <td>${a.id}</td>
+            <td>${a.group_id}</td>
+            <td>${a.discipline_id}</td>
+            <td>${a.hours}</td>
+        </tr>`;
+    });
+}
+
+// Заполнение списков
+async function populateSelects() {
+    const [tRes, gRes, dRes] = await Promise.all([
+        fetch('/api/teachers', { headers: { Authorization: `Bearer ${token}` } }),
+        fetch('/api/groups', { headers: { Authorization: `Bearer ${token}` } }),
+        fetch('/api/disciplines', { headers: { Authorization: `Bearer ${token}` } })
+    ]);
+    const teachers = await tRes.json();
+    const groups = await gRes.json();
+    const disciplines = await dRes.json();
+
+    const assignTeacher = document.getElementById('assignTeacher');
+    const reserveTeacher = document.getElementById('reserveTeacher');
+    assignTeacher.innerHTML = reserveTeacher.innerHTML = teachers.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+    document.getElementById('assignGroup').innerHTML = groups.map(g => `<option value="${g.id}">${g.name}</option>`).join('');
+    document.getElementById('assignDiscipline').innerHTML = disciplines.map(d => `<option value="${d.id}">${d.name}</option>`).join('');
+    document.getElementById(' RauerveDiscipline').innerHTML = disciplines.map(d => `<option value="${d.id}">${d.name}</option>`).join('');
+}
+// Добавление преподавателя
+document.getElementById('addTeacherForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (role !== 'admin') return showMessage('Нет доступа');
+    const name = document.getElementById('teacherName').value;
+    const spec = document.getElementById('teacherSpec').value;
+    const maxHours = document.getElementById('teacherMaxHours').value;
+    await fetch('/api/teachers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ name, specialization: spec, max_hours: maxHours, current_hours: 0 })
+    });
+    loadTeachers();
+});
+
+// Добавление группы 
+document.getElementById('addGroupForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (role !== 'admin') return showMessage('Нет доступа');
+    const name = document.getElementById('groupName').value;
+    const course = document.getElementById('groupCourse').value;
+    await fetch('/api/groups', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ name, course })
+    });
+    loadGroups();
+});
+
+// Добавление дисциплины
+document.getElementById('addDisciplineForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (role !== 'admin') return showMessage('Нет доступа');
+    const name = document.getElementById('disciplineName').value;
+    const hours = document.getElementById('disciplineHours').value;
+    await fetch('/api/disciplines', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ name, hours_required: hours })
+    });
+    loadDisciplines();
+});
+
+// Назначение нагрузки
+document.getElementById('assignLoadForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (role !== 'admin') return showMessage('Нет доступа');
+    const teacherId = document.getElementById('assignTeacher').value;
+    const groupId = document.getElementById('assignGroup').value;
+    const disciplineId = document.getElementById('assignDiscipline').value;
+    const hours = document.getElementById('assignHours').value;
+    const res = await fetch('/api/assign', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ teacher_id: teacherId, group_id: groupId, discipline_id: disciplineId, hours })
+    });
+    const result = await res.json();
+    if (result.message) showMessage(result.message);
+    if (result.reserveMessage) showMessage(result.reserveMessage);
+    loadAssignments();
+    loadTeachers();
+});
 
