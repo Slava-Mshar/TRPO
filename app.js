@@ -298,3 +298,66 @@ document.getElementById('assignLoadForm').addEventListener('submit', async (e) =
     loadTeachers();
 });
 
+// Добавление в резерв
+document.getElementById('addReserveForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (role !== 'admin') return showMessage('Нет доступа');
+    const teacherId = document.getElementById('reserveTeacher').value;
+    const disciplineId = document.getElementById('reserveDiscipline').value;
+    const hours = document.getElementById('reserveHours').value;
+    await fetch('/api/reserves', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ teacher_id: teacherId, discipline_id: disciplineId, hours })
+    });
+    loadReserves();
+});
+
+// Удаление
+window.removeTeacher = async (id) => { if (role !== 'admin') return; await fetch(`/api/teachers/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } }); loadTeachers(); };
+window.removeGroup = async (id) => { if (role !== 'admin') return; await fetch(`/api/groups/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } }); loadGroups(); };
+window.removeDiscipline = async (id) => { if (role !== 'admin') return; await fetch(`/api/disciplines/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } }); loadDisciplines(); };
+window.removeAssignment = async (id) => { 
+    if (role !== 'admin') return; 
+    const res = await fetch(`/api/assignments/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } }); 
+    const result = await res.json(); 
+    if (result.reserveMessage) showMessage(result.reserveMessage); 
+    loadAssignments(); 
+    loadTeachers(); 
+};
+window.removeReserve = async (id) => { if (role !== 'admin') return; await fetch(`/api/reserves/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } }); loadReserves(); };
+
+// Отчёты 
+window.generateCurrentLoadReport = async () => {
+    if (role !== 'admin') return showMessage('Нет доступа');
+    const res = await fetch('/api/reports/current', { headers: { Authorization: `Bearer ${token}` } });
+    const report = await res.json();
+    document.getElementById('reportOutput').innerHTML = '<pre>' + JSON.stringify(report, null, 2) + '</pre>';
+};
+
+window.generateSemesterReport = async () => {
+    if (role !== 'admin') return showMessage('Нет доступа');
+    const res = await fetch('/api/reports/semester?semester=1', { headers: { Authorization: `Bearer ${token}` } });
+    const report = await res.json();
+    document.getElementById('reportOutput').innerHTML = '<pre>' + JSON.stringify(report, null, 2) + '</pre>';
+};
+
+// Инициализация
+function initApp() {
+    if (token) {
+        document.getElementById('auth').classList.add('hidden');
+        document.getElementById('register').classList.add('hidden');
+        document.getElementById('mainNav').classList.remove('hidden');
+        document.getElementById('mainContent').classList.remove('hidden');
+        if (role === 'admin') {
+            showSection('teachers');
+        } else {
+            showSection('myLoad');
+            loadMyAssignments();
+        }
+    } else {
+        document.getElementById('auth').classList.remove('hidden');
+    }
+}
+
+initApp(); 
